@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Karty – test wyborów</title>
+<style>
+  :root {
+    --bg: #fafaf8; --fg: #1d1d1f; --muted: #8a8a8f; --line: #e4e2dc;
+    --card: #ffffff; --ink: #1d1d1f; --red: #c0392b;
+    --btn: #1d1d1f; --btn-fg: #ffffff; --good: #2e7d4f;
+    --shadow: 0 20px 28px -12px rgba(0,0,0,.30), 0 8px 12px -6px rgba(0,0,0,.14);
+    --shadow-rest: 0 1px 2px rgba(0,0,0,.08);
+    color-scheme: light;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141416; --fg: #ececee; --muted: #8b8b92; --line: #2a2a2f;
+      --card: #1e1e22; --ink: #ececee; --red: #ff6b5e;
+      --btn: #ececee; --btn-fg: #141416; --good: #5fc08a;
+      --shadow: 0 22px 30px -12px rgba(0,0,0,.75), 0 8px 12px -6px rgba(0,0,0,.5);
+      --shadow-rest: 0 1px 2px rgba(0,0,0,.5);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141416; --fg: #ececee; --muted: #8b8b92; --line: #2a2a2f;
+    --card: #1e1e22; --ink: #ececee; --red: #ff6b5e;
+    --btn: #ececee; --btn-fg: #141416; --good: #5fc08a;
+    --shadow: 0 22px 30px -12px rgba(0,0,0,.75), 0 8px 12px -6px rgba(0,0,0,.5);
+    --shadow-rest: 0 1px 2px rgba(0,0,0,.5);
+    color-scheme: dark;
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    height: 100%; margin: 0; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app { min-height: 100%; display: flex; flex-direction: column; padding: 0 20px; }
+  [hidden] { display: none !important; }
+
+  /* ---------- przyciski / pola ---------- */
+  button { font: inherit; color: inherit; }
+  .btn {
+    background: var(--btn); color: var(--btn-fg); border: 0; border-radius: 999px;
+    padding: 12px 26px; font-size: 15px; cursor: pointer; transition: opacity .15s, transform .15s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  .btn.ghost:hover { color: var(--fg); opacity: 1; }
+  .btn.small { padding: 8px 18px; font-size: 13px; }
+  .link { background: none; border: 0; color: var(--muted); font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; padding: 4px; }
+  .link:hover { color: var(--fg); }
+  input[type=text] {
+    font: inherit; font-size: 18px; text-align: center; width: min(320px, 100%);
+    padding: 12px 8px; background: transparent; color: var(--fg);
+    border: 0; border-bottom: 1.5px solid var(--line); outline: none; transition: border-color .15s;
+  }
+  input[type=text]:focus { border-color: var(--fg); }
+  input::placeholder { color: var(--muted); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+  .seg button { background: none; border: 0; border-radius: 999px; padding: 7px 16px; font-size: 13px; color: var(--muted); cursor: pointer; transition: background .15s, color .15s; }
+  .seg button[aria-pressed=true] { background: var(--btn); color: var(--btn-fg); }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); cursor: pointer; user-select: none; }
+  .check input { accent-color: var(--fg); width: 15px; height: 15px; margin: 0; }
+
+  /* ---------- ekran startowy ---------- */
+  .center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; text-align: center; }
+  h1 { font-size: 15px; font-weight: 500; letter-spacing: .02em; margin: 0; color: var(--muted); }
+  .hint { color: var(--muted); font-size: 13px; max-width: 380px; line-height: 1.5; margin: 0; }
+
+  /* ---------- gra ---------- */
+  .top { padding-top: 18px; text-align: center; color: var(--muted); font-size: 13px; }
+  .memo { font-size: 12px; margin-top: 4px; min-height: 16px; }
+  .bar { height: 2px; background: var(--line); border-radius: 2px; margin: 10px auto 0; max-width: 220px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--fg); transition: width .3s ease; }
+  .prompt { font-size: clamp(18px, 3.4vw, 24px); font-weight: 400; margin: 0; letter-spacing: .01em; }
+  .hud { min-height: 22px; font-size: 13px; color: var(--muted); transition: opacity .3s; }
+  .hud b { color: var(--fg); font-weight: 500; }
+  .cards { --w: clamp(52px, 15vw, 112px); display: flex; gap: clamp(8px, 2.2vw, 22px); justify-content: center; padding-top: 14px; }
+  .card {
+    position: relative; width: var(--w); height: calc(var(--w) * 1.4); padding: 0; cursor: pointer;
+    background: var(--card); color: var(--ink); border: 1px solid var(--line);
+    border-radius: calc(var(--w) * .09); box-shadow: var(--shadow-rest);
+    transition: transform .18s ease, box-shadow .18s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .card.red { color: var(--red); }
+  .card span { position: absolute; display: flex; flex-direction: column; align-items: center; line-height: 1; }
+  .card b { font-weight: 600; font-size: calc(var(--w) * .24); }
+  .card i { font-style: normal; font-size: calc(var(--w) * .2); margin-top: calc(var(--w) * .02); }
+  .card .tl { top: 7%; left: 9%; }
+  .card .br { bottom: 7%; right: 9%; transform: rotate(180deg); }
+  .card .mid { inset: 0; justify-content: center; font-size: calc(var(--w) * .52); }
+  @media (hover: hover) {
+    .card:hover { transform: translateY(-12px); box-shadow: var(--shadow); }
+  }
+  .card:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
+  .card:active { transform: translateY(-4px) scale(.98); }
+  .card.deal { animation: deal .38s cubic-bezier(.2,.8,.2,1) backwards; }
+  @keyframes deal { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+  .foot { padding: 18px 0 22px; text-align: center; }
+
+  /* ---------- podsumowanie / ranking ---------- */
+  .sum { width: min(560px, 100%); margin: 0 auto; padding: 36px 0 40px; }
+  .sum h2 { font-size: 15px; font-weight: 500; color: var(--muted); margin: 0 0 6px; text-align: center; }
+  .big { font-size: 64px; font-weight: 300; text-align: center; letter-spacing: -.02em; line-height: 1.1; }
+  .sub { text-align: center; color: var(--muted); font-size: 14px; margin-bottom: 22px; }
+  .verdict { text-align: center; font-size: 16px; line-height: 1.5; margin: 0 0 22px; }
+  .rows { border-top: 1px solid var(--line); }
+  .row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .row span:first-child { color: var(--muted); }
+  .row span:last-child { text-align: right; }
+  .note { font-size: 13px; color: var(--muted); line-height: 1.55; margin: 10px 0; }
+  .note.c { text-align: center; }
+  .note.warn { color: var(--red); }
+  .note b { color: var(--fg); font-weight: 500; }
+  h3 { font-size: 13px; font-weight: 500; color: var(--muted); margin: 28px 0 10px; letter-spacing: .02em; }
+  .spark { width: 100%; height: 56px; display: block; }
+  .spark polyline { fill: none; stroke: var(--fg); stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .spark line { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+  .prof { display: grid; grid-template-columns: 1fr 56px 112px; gap: 8px 10px; align-items: center; font-size: 14px; }
+  .prof .lab { overflow-wrap: anywhere; }
+  .prof .lab em { font-style: normal; color: var(--muted); margin-right: 6px; }
+  .prof.maybe { opacity: .6; }
+  .meter { height: 4px; background: var(--line); border-radius: 4px; overflow: hidden; }
+  .meter i { display: block; height: 100%; background: var(--good); border-radius: 4px; }
+  .meter i.neg { background: var(--red); }
+  .prof .val { text-align: right; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .change { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; line-height: 1.5; }
+  .change small { display: block; color: var(--muted); font-size: 12px; }
+  .status { text-align: center; font-size: 13px; color: var(--muted); margin: 26px 0 14px; min-height: 18px; }
+  .status.ok { color: var(--good); }
+  .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  th, td { text-align: left; padding: 7px 4px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; }
+  td:last-child, th:last-child { text-align: right; }
+  td:first-child, th:first-child { width: 28px; color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) {
+    .card, .bar > i { transition: none; }
+    .card.deal { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 1. start -->
+  <section id="s-start" class="center">
+    <h1>Test wyborów</h1>
+    <input id="name" type="text" maxlength="40" placeholder="Twoje imię" autocomplete="given-name" aria-label="Twoje imię">
+    <div class="seg" role="group" aria-label="Tryb">
+      <button id="m-normal" aria-pressed="true">Zwykły</button>
+      <button id="m-challenge" aria-pressed="false">Oszukaj model</button>
+    </div>
+    <p class="hint" id="mode-hint">Wskazujesz kartę, która ci się podoba. Model po cichu uczy się Twojego stylu.</p>
+    <label class="check"><input id="smart" type="checkbox" checked> mądre rozdania (szybciej poznam Twój styl)</label>
+    <button id="go" class="btn">Zaczynamy</button>
+    <button id="to-rank" class="link">ranking wyników</button>
+  </section>
+
+  <!-- 2. gra -->
+  <section id="s-play" hidden style="flex:1; display:none; flex-direction:column;">
+    <div class="top">
+      <div id="counter"></div>
+      <div class="memo" id="memo"></div>
+      <div class="bar"><i id="progress"></i></div>
+    </div>
+    <div class="center" style="gap:30px;">
+      <p class="prompt">wybierz, która ci się podoba</p>
+      <div id="cards" class="cards"></div>
+      <div id="hud" class="hud" aria-live="polite"></div>
+    </div>
+    <div class="foot"><button id="stop" class="btn ghost">Stop</button></div>
+  </section>
+
+  <!-- 3. podsumowanie -->
+  <section id="s-sum" hidden><div class="sum" id="sum"></div></section>
+
+  <!-- 4. ranking -->
+  <section id="s-rank" hidden><div class="sum" id="rank"></div></section>
+
+</div>
+
+<script>
+// ==MODEL==
+const SUITS = ['♠', '♥', '♦', '♣'];
+const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+const DECK = [], BY_LABEL = {};
+for (const s of SUITS) RANKS.forEach((r, i) => {
+  const c = { rank: r, suit: s, value: i + 2, red: s === '♥' || s === '♦', label: r + s };
+  DECK.push(c); BY_LABEL[c.label] = c;
+});
+
+function dealHand() {
+  const a = DECK.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a.slice(0, 5);
+}
+
+class Habits {
+  constructor() { this.prev = null; this.prevSlot = null; this.recent = []; }
+  update(card, slot) { this.prev = card; this.prevSlot = slot; this.recent.push(card); if (this.recent.length > 8) this.recent.shift(); }
+}
+
+const POS = 'pozycja w ręce: ';
+
+// Cechy karty (J=11, Q=12, K=13, A=14; as jest parzysty). Kodowanie znaków przez kontrasty ±0,5
+// (kolor, ♥ vs ♦, ♠ vs ♣), dzięki czemu każda cecha jest identyfikowalna statystycznie.
+function cardFeatures(card, slot, hand, h) {
+  const f = {};
+  const red = card.red ? 1 : 0, even = card.value % 2 === 0 ? 1 : 0;
+  const high = card.value >= 9 ? 1 : 0, face = card.value >= 11 ? 1 : 0;
+  const vals = hand.map(c => c.value);
+  const top = card.value === Math.max(...vals) ? 1 : 0, bot = card.value === Math.min(...vals) ? 1 : 0;
+
+  f['kolor: czerwony zamiast czarnego'] = red - 0.5;
+  f['znak: ♥ zamiast ♦'] = card.suit === '♥' ? 0.5 : card.suit === '♦' ? -0.5 : 0;
+  f['znak: ♠ zamiast ♣'] = card.suit === '♠' ? 0.5 : card.suit === '♣' ? -0.5 : 0;
+  f['wartość: parzysta'] = even;
+  f['wartość: wysoka'] = (card.value - 8) / 6;
+  f['wartość: figura lub as'] = face;
+  f[POS + (Math.min(slot, 4) + 1)] = 1;
+
+  f['ręka: najwyższa karta'] = top;
+  f['ręka: najniższa karta'] = bot;
+  f['ręka: rzadki znak'] = 1 - hand.filter(c => c.suit === card.suit).length / hand.length;
+  f['ręka: rzadki kolor'] = 1 - hand.filter(c => c.red === card.red).length / hand.length;
+
+  // cechy złożone (efekt ponad sumę osobnych upodobań)
+  // (cechy wycentrowane, żeby były niezależne od efektów głównych)
+  f['kombinacja: parzysta + czerwona'] = (even - 0.54) * (red - 0.5);
+  f['kombinacja: parzysta + wysoka'] = (even - 0.54) * (high - 0.46);
+  f['kombinacja: czerwona + wysoka'] = (red - 0.5) * (high - 0.46);
+  f['kombinacja: parzysta + najwyższa w ręce'] = (even - 0.54) * (top - 0.2);
+  f['kombinacja: figura + czerwona'] = (face - 0.31) * (red - 0.5);
+
+  const p = h.prev;
+  if (p) {
+    const sameColor = card.red === p.red ? 1 : 0, higher = card.value > p.value ? 1 : 0;
+    f['powtórka: ten sam znak'] = card.suit === p.suit ? 1 : 0;
+    f['powtórka: ten sam kolor'] = sameColor;
+    f['powtórka: ta sama parzystość'] = (card.value % 2) === (p.value % 2) ? 1 : 0;
+    f['powtórka: ta sama wartość'] = card.value === p.value ? 1 : 0;
+    f['powtórka: wyższa niż poprzednia'] = higher;
+    f['powtórka: podobna wartość'] = 1 - Math.abs(card.value - p.value) / 12;
+    f['powtórka: ta sama pozycja w ręce'] = slot === h.prevSlot ? 1 : 0;
+    f['sekwencja: kolor × kierunek'] = (sameColor - 0.5) * (higher - 0.5);
+  }
+  const r = h.recent;
+  if (r.length) {
+    const n = r.length;
+    f['seria: dominujący znak'] = r.filter(c => c.suit === card.suit).length / n;
+    f['seria: dominujący kolor'] = r.filter(c => c.red === card.red).length / n;
+    f['seria: dominująca parzystość'] = r.filter(c => (c.value % 2) === (card.value % 2)).length / n;
+    f['seria: dominująca wysokość'] = r.filter(c => (c.value >= 9) === (card.value >= 9)).length / n;
+  }
+  return f;
+}
+
+// Etykiety do raportu: pos = co lubi przy wartości dodatniej, neg = co lubi przy ujemnej (jeśli jest "druga strona")
+const LABELS = {
+  'kolor: czerwony zamiast czarnego': { pos: 'karty czerwone (♥♦)', neg: 'karty czarne (♠♣)' },
+  'znak: ♥ zamiast ♦': { pos: '♥ zamiast ♦', neg: '♦ zamiast ♥' },
+  'znak: ♠ zamiast ♣': { pos: '♠ zamiast ♣', neg: '♣ zamiast ♠' },
+  'wartość: parzysta': { pos: 'wartości parzyste', neg: 'wartości nieparzyste' },
+  'wartość: wysoka': { pos: 'wysokie karty', neg: 'niskie karty' },
+  'wartość: figura lub as': { pos: 'figury i asy' },
+  'ręka: najwyższa karta': { pos: 'najwyższa karta w ręce' },
+  'ręka: najniższa karta': { pos: 'najniższa karta w ręce' },
+  'ręka: rzadki znak': { pos: 'znak, którego jest mało w ręce' },
+  'ręka: rzadki kolor': { pos: 'kolor, którego jest mało w ręce' },
+  'kombinacja: parzysta + czerwona': { pos: 'parzyste czerwone i nieparzyste czarne (interakcja)', neg: 'parzyste czarne i nieparzyste czerwone (interakcja)' },
+  'kombinacja: parzysta + wysoka': { pos: 'parzyste wysokie i nieparzyste niskie (interakcja)', neg: 'parzyste niskie i nieparzyste wysokie (interakcja)' },
+  'kombinacja: czerwona + wysoka': { pos: 'czerwone wysokie i czarne niskie (interakcja)', neg: 'czerwone niskie i czarne wysokie (interakcja)' },
+  'kombinacja: parzysta + najwyższa w ręce': { pos: 'parzysta jako najwyższa karta w ręce (interakcja)', neg: 'nieparzysta jako najwyższa karta w ręce (interakcja)' },
+  'kombinacja: figura + czerwona': { pos: 'czerwone figury i asy (interakcja)', neg: 'czarne figury i asy (interakcja)' },
+  'powtórka: ten sam znak': { pos: 'ten sam znak co poprzednio' },
+  'powtórka: ten sam kolor': { pos: 'ten sam kolor co poprzednio' },
+  'powtórka: ta sama parzystość': { pos: 'ta sama parzystość co poprzednio' },
+  'powtórka: ta sama wartość': { pos: 'ta sama wartość co poprzednio' },
+  'powtórka: wyższa niż poprzednia': { pos: 'wyższa karta niż poprzednio', neg: 'niższa karta niż poprzednio' },
+  'powtórka: podobna wartość': { pos: 'wartość bliska poprzedniej' },
+  'powtórka: ta sama pozycja w ręce': { pos: 'ta sama pozycja w ręce co poprzednio' },
+  'sekwencja: kolor × kierunek': { pos: 'ten sam kolor przy wyższej karcie, zmiana koloru przy niższej', neg: 'ten sam kolor przy niższej karcie, zmiana koloru przy wyższej' },
+  'seria: dominujący znak': { pos: 'trzymanie się znaku z ostatnich rund', neg: 'zmienianie znaku względem ostatnich rund' },
+  'seria: dominujący kolor': { pos: 'trzymanie się koloru z ostatnich rund', neg: 'zmienianie koloru względem ostatnich rund' },
+  'seria: dominująca parzystość': { pos: 'trzymanie się parzystości z ostatnich rund', neg: 'zmienianie parzystości względem ostatnich rund' },
+  'seria: dominująca wysokość': { pos: 'trzymanie się wysokości z ostatnich rund', neg: 'zmienianie wysokości względem ostatnich rund' }
+};
+function labelOf(key) {
+  if (key.startsWith(POS)) return { pos: 'pozycja ' + key.slice(POS.length) + ' (względem średniej pozycji)' };
+  return LABELS[key] || { pos: key };
+}
+
+// Wybór = softmax(w · cechy), uczony online (conditional logit)
+class Learner {
+  constructor(lr, l2 = 0.003) { this.lr = lr; this.l2 = l2; this.w = {}; }
+  probs(feats) {
+    const sc = feats.map(f => { let s = 0; for (const k in f) s += (this.w[k] || 0) * f[k]; return s; });
+    const m = Math.max(...sc);
+    const ex = sc.map(s => Math.exp(s - m));
+    const z = ex.reduce((a, b) => a + b, 0);
+    return ex.map(e => e / z);
+  }
+  update(feats, chosen) {
+    const p = this.probs(feats);
+    const grad = {};
+    feats.forEach((f, i) => { for (const k in f) grad[k] = (grad[k] || 0) - p[i] * f[k]; });
+    for (const k in feats[chosen]) grad[k] = (grad[k] || 0) + feats[chosen][k];
+    const keys = new Set([...Object.keys(this.w), ...Object.keys(grad)]);
+    for (const k of keys) this.w[k] = (this.w[k] || 0) + this.lr * (grad[k] || 0) - this.l2 * (this.w[k] || 0);
+  }
+}
+
+class Predictor {
+  constructor() {
+    this.learners = { szybki: new Learner(0.30), wolny: new Learner(0.06) };
+    this.perf = { szybki: 0, wolny: 0 };
+    this.habits = new Habits();
+    this.info = {};                       // zebrana informacja o każdej cesze (do mądrych rozdań)
+  }
+  feats(hand) { return hand.map((c, i) => cardFeatures(c, i, hand, this.habits)); }
+  mix() {
+    const ex = {}; let z = 0;
+    for (const n in this.perf) { ex[n] = Math.exp(8 * this.perf[n]); z += ex[n]; }
+    for (const n in ex) ex[n] /= z;
+    return ex;
+  }
+  predictFeats(feats) {
+    const mix = this.mix(), out = new Array(feats.length).fill(0);
+    for (const n in this.learners) this.learners[n].probs(feats).forEach((p, i) => { out[i] += mix[n] * p; });
+    return out;
+  }
+  predict(hand) { return this.predictFeats(this.feats(hand)); }
+  // informacja Fishera, jaką dałaby dana ręka, rozbita na cechy
+  handInfo(feats) {
+    const p = this.predictFeats(feats), s1 = {}, s2 = {};
+    feats.forEach((f, i) => { for (const k in f) { s1[k] = (s1[k] || 0) + p[i] * f[k]; s2[k] = (s2[k] || 0) + p[i] * f[k] * f[k]; } });
+    const out = {};
+    for (const k in s1) out[k] = Math.max(0, s2[k] - s1[k] * s1[k]);
+    return out;
+  }
+  observe(idx, hand) {
+    const feats = this.feats(hand);
+    const hi = this.handInfo(feats);
+    for (const k in hi) this.info[k] = (this.info[k] || 0) + hi[k];
+    for (const n in this.learners) {
+      const p = this.learners[n].probs(feats)[idx];
+      this.perf[n] = 0.9 * this.perf[n] + 0.1 * Math.log(Math.max(p, 1e-9));
+      this.learners[n].update(feats, idx);
+    }
+    this.habits.update(hand[idx], idx);
+  }
+  // mądre rozdanie: z kilku losowych rąk wybiera tę, która najmocniej zmniejszy niepewność co do cech
+  smartHand(tries = 24) {
+    let best = null, bestScore = -1;
+    for (let t = 0; t < tries; t++) {
+      const hand = dealHand();
+      const hi = this.handInfo(this.feats(hand));
+      let score = 0;
+      for (const k in hi) {
+        const v = 1 / (1 + (this.info[k] || 0));          // wariancja a priori ~ 1/(1+zebrana informacja)
+        score += v - 1 / (1 / v + hi[k]);                   // spodziewane zmniejszenie wariancji
+      }
+      if (score > bestScore) { bestScore = score; best = hand; }
+    }
+    return best;
+  }
+  warmStart(w, scale = 0.7) {
+    for (const n in this.learners) for (const k in w) this.learners[n].w[k] = w[k] * scale;
+  }
+  exportWeights() {
+    const mix = this.mix(), keys = new Set(), out = {};
+    for (const n in this.learners) Object.keys(this.learners[n].w).forEach(k => keys.add(k));
+    for (const k of keys) {
+      let v = 0; for (const n in this.learners) v += mix[n] * (this.learners[n].w[k] || 0);
+      out[k] = +v.toFixed(3);
+    }
+    return out;
+  }
+}
+
+/* ---------- analiza po sesji ---------- */
+// cechy binarne do wykrywania zmiany stylu
+const SCAN = [
+  { label: 'parzyste karty', f: c => c.value % 2 === 0 },
+  { label: 'czerwone karty', f: c => c.red },
+  { label: 'znak ♠', f: c => c.suit === '♠' },
+  { label: 'znak ♥', f: c => c.suit === '♥' },
+  { label: 'znak ♦', f: c => c.suit === '♦' },
+  { label: 'znak ♣', f: c => c.suit === '♣' },
+  { label: 'wysokie karty (9 i wyżej)', f: c => c.value >= 9 },
+  { label: 'figury i asy', f: c => c.value >= 11 },
+  { label: 'najwyższa karta w ręce', f: (c, i, hand) => c.value === Math.max(...hand.map(x => x.value)) },
+  { label: 'najniższa karta w ręce', f: (c, i, hand) => c.value === Math.min(...hand.map(x => x.value)) },
+  ...[0, 1, 2, 3, 4].map(j => ({ label: 'pozycja ' + (j + 1) + ' w ręce', f: (c, i) => i === j })),
+  { label: 'ten sam znak co poprzednio', f: (c, i, hand, h) => !!h.prev && c.suit === h.prev.suit },
+  { label: 'ten sam kolor co poprzednio', f: (c, i, hand, h) => !!h.prev && c.red === h.prev.red },
+  { label: 'ta sama parzystość co poprzednio', f: (c, i, hand, h) => !!h.prev && (c.value % 2) === (h.prev.value % 2) },
+  { label: 'wyższa karta niż poprzednio', f: (c, i, hand, h) => !!h.prev && c.value > h.prev.value }
+];
+
+function replay(rounds) {
+  const h = new Habits(), out = [];
+  for (const r of rounds) {
+    out.push({
+      feats: r.hand.map((c, i) => cardFeatures(c, i, r.hand, h)),
+      scan: r.hand.map((c, i) => SCAN.map(s => (s.f(c, i, r.hand, h) ? 1 : 0))),
+      choice: r.choice
+    });
+    h.update(r.hand[r.choice], r.choice);
+  }
+  return out;
+}
+
+function invert(A) {
+  const n = A.length;
+  const M = A.map((row, i) => { const r = new Float64Array(2 * n); r.set(row); r[n + i] = 1; return r; });
+  for (let c = 0; c < n; c++) {
+    let p = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    [M[c], M[p]] = [M[p], M[c]];
+    const piv = M[c][c];
+    for (let j = 0; j < 2 * n; j++) M[c][j] /= piv;
+    for (let r = 0; r < n; r++) {
+      if (r === c) continue;
+      const f = M[r][c];
+      if (f === 0) continue;
+      for (let j = 0; j < 2 * n; j++) M[r][j] -= f * M[c][j];
+    }
+  }
+  return M.map(r => Array.from(r.slice(n)));
+}
+
+// Wsadowy conditional logit (Newton) z lekką regularyzacją; kowariancja = odwrotność Hesjanu
+function fitBatch(rep, lambda = 0.5) {
+  const keys = [...new Set(rep.flatMap(r => r.feats.flatMap(f => Object.keys(f))))];
+  const d = keys.length, idx = {};
+  keys.forEach((k, i) => { idx[k] = i; });
+  const X = rep.map(r => r.feats.map(f => { const v = new Float64Array(d); for (const k in f) v[idx[k]] = f[k]; return v; }));
+  let w = new Float64Array(d), inv = null;
+  for (let it = 0; it < 15; it++) {
+    const g = new Float64Array(d);
+    const H = Array.from({ length: d }, () => new Float64Array(d));
+    for (let a = 0; a < d; a++) { g[a] = -lambda * w[a]; H[a][a] = lambda; }
+    for (let r = 0; r < X.length; r++) {
+      const xs = X[r];
+      const sc = xs.map(v => { let s = 0; for (let a = 0; a < d; a++) s += v[a] * w[a]; return s; });
+      const mx = Math.max(...sc), ex = sc.map(s => Math.exp(s - mx)), z = ex.reduce((a, b) => a + b, 0);
+      const p = ex.map(e => e / z);
+      const m = new Float64Array(d);
+      xs.forEach((v, i) => { for (let a = 0; a < d; a++) m[a] += p[i] * v[a]; });
+      const ch = xs[rep[r].choice];
+      for (let a = 0; a < d; a++) g[a] += ch[a] - m[a];
+      xs.forEach((v, i) => {
+        const pi = p[i];
+        for (let a = 0; a < d; a++) { if (v[a] === 0) continue; const va = pi * v[a], Ha = H[a]; for (let b = 0; b < d; b++) Ha[b] += va * v[b]; }
+      });
+      for (let a = 0; a < d; a++) for (let b = 0; b < d; b++) H[a][b] -= m[a] * m[b];
+    }
+    inv = invert(H);
+    let maxStep = 0;
+    for (let a = 0; a < d; a++) {
+      let s = 0; for (let b = 0; b < d; b++) s += inv[a][b] * g[b];
+      s = Math.max(-2, Math.min(2, s));
+      w[a] += s; maxStep = Math.max(maxStep, Math.abs(s));
+    }
+    if (maxStep < 1e-4) break;
+  }
+  return { keys, w: Array.from(w), cov: inv };
+}
+
+// Estymaty z błędami standardowymi. Pozycje w ręce raportujemy jako kontrasty względem średniej.
+function effects(fit) {
+  const { keys, w, cov } = fit, d = keys.length;
+  const posIdx = keys.map((k, i) => (k.startsWith(POS) ? i : -1)).filter(i => i >= 0);
+  return keys.map((k, i) => {
+    const c = new Array(d).fill(0);
+    if (posIdx.includes(i)) { posIdx.forEach(j => { c[j] = -1 / posIdx.length; }); c[i] += 1; } else c[i] = 1;
+    let est = 0, v = 0;
+    for (let a = 0; a < d; a++) { if (c[a] === 0) continue; est += c[a] * w[a]; for (let b = 0; b < d; b++) v += c[a] * cov[a][b] * c[b]; }
+    const se = Math.sqrt(Math.max(v, 1e-12));
+    return { key: k, est, se, z: est / se, lo: est - 1.96 * se, hi: est + 1.96 * se };
+  });
+}
+
+function suitOrder(fit) {
+  const g = k => { const i = fit.keys.indexOf(k); return i < 0 ? 0 : fit.w[i]; };
+  const c = g('kolor: czerwony zamiast czarnego'), hd = g('znak: ♥ zamiast ♦'), sc = g('znak: ♠ zamiast ♣');
+  const tot = { '♥': 0.5 * c + 0.5 * hd, '♦': 0.5 * c - 0.5 * hd, '♠': -0.5 * c + 0.5 * sc, '♣': -0.5 * c - 0.5 * sc };
+  return Object.entries(tot).sort((a, b) => b[1] - a[1]).map(x => x[0]);
+}
+
+// Wykrywanie zmiany stylu: dla każdej cechy szukamy punktu, w którym zmienia się "nadwyżka wyborów"
+function scanChanges(rep, minSeg = 20, thr = 4.0) {
+  const n = rep.length;
+  if (n < minSeg * 3) return [];
+  const found = [];
+  for (let k = 0; k < SCAN.length; k++) {
+    const ch = new Float64Array(n), av = new Float64Array(n), r = new Float64Array(n);
+    for (let t = 0; t < n; t++) {
+      const vals = rep[t].scan.map(s => s[k]);
+      av[t] = vals.reduce((a, b) => a + b, 0) / vals.length;
+      ch[t] = vals[rep[t].choice];
+      r[t] = ch[t] - av[t];
+    }
+    const mu = r.reduce((a, b) => a + b, 0) / n;
+    const sd = Math.sqrt(r.reduce((a, b) => a + (b - mu) * (b - mu), 0) / (n - 1));
+    if (sd < 1e-9) continue;
+    const pre = new Float64Array(n + 1);
+    for (let t = 0; t < n; t++) pre[t + 1] = pre[t] + r[t];
+    let bestT = 0, bestAt = -1;
+    for (let t = minSeg; t <= n - minSeg; t++) {
+      const m1 = pre[t] / t, m2 = (pre[n] - pre[t]) / (n - t);
+      const T = (m1 - m2) / (sd * Math.sqrt(1 / t + 1 / (n - t)));
+      if (Math.abs(T) > Math.abs(bestT)) { bestT = T; bestAt = t; }
+    }
+    if (Math.abs(bestT) >= thr) {
+      const mean = (arr, a, b) => { let s = 0; for (let i = a; i < b; i++) s += arr[i]; return s / (b - a); };
+      found.push({
+        label: SCAN[k].label, at: bestAt + 1, T: bestT,
+        chosenBefore: mean(ch, 0, bestAt), availBefore: mean(av, 0, bestAt),
+        chosenAfter: mean(ch, bestAt, n), availAfter: mean(av, bestAt, n)
+      });
+    }
+  }
+  return found.sort((a, b) => Math.abs(b.T) - Math.abs(a.T)).slice(0, 2);
+}
+
+function analyse(results, mode) {
+  const n = results.length, hits = results.reduce((a, b) => a + b, 0), base = 0.2;
+  const mean = a => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
+  const half = Math.floor(n / 2);
+  const z = n ? (hits - n * base) / Math.sqrt(n * base * (1 - base)) : 0;
+  let verdict;
+  if (mode === 'challenge') {
+    if (n < 20) verdict = 'Za mało rund, żeby coś ocenić.';
+    else if (z >= 3) verdict = 'Model Cię rozgryzł – mimo prób zostawiasz wyraźny wzorzec.';
+    else if (z >= 2) verdict = 'Model częściowo Cię rozgryzł – wzorzec jest wykrywalny.';
+    else verdict = 'Model nie dał rady – Twoje wybory są nieprzewidywalne.';
+  } else {
+    if (n < 20) verdict = 'Za mało rund, żeby coś ocenić.';
+    else if (z >= 3) verdict = 'Jesteś bardzo przewidywalny – model wyraźnie wyłapał Twój wzorzec.';
+    else if (z >= 2) verdict = 'Masz wykrywalny wzorzec wyboru – model trafia istotnie częściej niż przypadek.';
+    else verdict = 'Brak wyraźnego wzorca – Twoje wybory są zbliżone do losowych.';
+  }
+  return {
+    rounds: n, hits, accuracy: n ? hits / n : 0, z,
+    firstHalf: n >= 20 ? mean(results.slice(0, half)) : null,
+    secondHalf: n >= 20 ? mean(results.slice(half)) : null,
+    last20: n >= 20 ? mean(results.slice(-20)) : null,
+    verdict
+  };
+}
+
+// czas reakcji i zachowanie kursora
+function analyseTiming(rounds, hits) {
+  const ok = rounds.map((r, i) => ({ rt: r.rt, hit: hits[i] })).filter(x => x.rt > 150 && x.rt < 20000);
+  if (ok.length < 20) return null;
+  const med = a => { const s = a.slice().sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+  const acc = a => (a.length ? a.reduce((s, x) => s + x.hit, 0) / a.length : null);
+  const m = med(ok.map(x => x.rt));
+  const fast = ok.filter(x => x.rt <= m), slow = ok.filter(x => x.rt > m);
+  const out = {
+    median: m, fastAcc: acc(fast), slowAcc: acc(slow), nFast: fast.length, nSlow: slow.length,
+    trendFirst: null, trendLast: null, considered: null, impulsive: null, hoverRounds: 0
+  };
+  if (ok.length >= 40) {
+    out.trendFirst = med(ok.slice(0, 20).map(x => x.rt));
+    out.trendLast = med(ok.slice(-20).map(x => x.rt));
+  }
+  const hov = rounds.filter(r => r.first != null && r.first >= 0 && r.dwell);
+  if (hov.length >= 10) {
+    out.hoverRounds = hov.length;
+    out.considered = hov.reduce((s, r) => s + r.dwell.filter(d => d >= 120).length, 0) / hov.length;
+    out.impulsive = hov.filter(r => r.first === r.choice).length / hov.length;
+  }
+  return out;
+}
+// ==/MODEL==
+
+/* ================= interfejs ================= */
+const $ = id => document.getElementById(id);
+const RECOMMENDED = 100;
+const LS_KEY = 'karty_sesje_v3';
+const pct = v => (v == null ? '–' : Math.round(v * 100) + '%');
+const fmt = (v, d = 2) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(d).replace('.', ',');
+const sec = ms => (ms / 1000).toFixed(1).replace('.', ',') + ' s';
+
+const caps = {};
+function cap(name) {
+  if (!caps[name]) caps[name] = (window.claude && typeof claude.use === 'function')
+    ? claude.use(name).catch(() => null) : Promise.resolve(null);
+  return caps[name];
+}
+cap('db'); cap('downloads');
+
+let predictor, hand, guess, rounds, userName, nameKey, mode = 'normal', smart = true, prevSession = null;
+let lockUntil = 0, finished = false, roundStart = 0, hov = null;
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function show(id) {
+  for (const s of ['s-start', 's-play', 's-sum', 's-rank']) {
+    const e = $(s);
+    e.hidden = s !== id;
+    if (s === 's-play') e.style.display = s === id ? 'flex' : 'none';
+  }
+  window.scrollTo(0, 0);
+}
+
+/* ---------- start ---------- */
+function setMode(m) {
+  mode = m;
+  $('m-normal').setAttribute('aria-pressed', m === 'normal');
+  $('m-challenge').setAttribute('aria-pressed', m === 'challenge');
+  $('mode-hint').textContent = m === 'normal'
+    ? 'Wskazujesz kartę, która ci się podoba. Model po cichu uczy się Twojego stylu.'
+    : 'Staraj się wybierać tak, żeby model Cię nie przewidział. Po każdym wyborze zobaczysz, co typował.';
+}
+
+async function loadPrevious(key) {
+  const lookup = (async () => {
+    const db = await cap('db');
+    if (db) {
+      try {
+        const snap = await db.collection('sessions').where('nameKey', '==', key).orderBy('savedAt', 'desc').limit(1).get();
+        if (snap.docs.length) return snap.docs[0].data();
+      } catch (e) { /* przejdź do pamięci lokalnej */ }
+    }
+    try {
+      const arr = JSON.parse(localStorage.getItem(LS_KEY) || '[]').filter(x => x.nameKey === key);
+      if (arr.length) return arr[arr.length - 1];
+    } catch (e) { /* brak storage */ }
+    return null;
+  })();
+  return Promise.race([lookup, new Promise(r => setTimeout(() => r(null), 2500))]);
+}
+
+async function startGame() {
+  const nm = $('name').value.trim();
+  if (!nm) { $('name').focus(); return; }
+  $('go').disabled = true; $('go').textContent = '…';
+  userName = nm; nameKey = nm.toLowerCase();
+  smart = $('smart').checked;
+  predictor = new Predictor();
+  rounds = []; finished = false;
+  prevSession = await loadPrevious(nameKey);
+  $('memo').textContent = '';
+  if (prevSession && prevSession.model && prevSession.model.w) {
+    predictor.warmStart(prevSession.model.w);
+    $('memo').textContent = 'Wczytano Twój profil z poprzedniej sesji (' + prevSession.rounds + ' rund).';
+  }
+  $('go').disabled = false; $('go').textContent = 'Zaczynamy';
+  $('hud').textContent = '';
+  show('s-play');
+  nextRound();
+}
+
+function nextRound() {
+  hand = (smart && rounds.length >= 8 && Math.random() > 0.3) ? predictor.smartHand() : dealHand();
+  const probs = predictor.predict(hand);
+  guess = probs.indexOf(Math.max(...probs));
+  hov = { enter: [], dwell: [0, 0, 0, 0, 0], first: -1 };
+  const box = $('cards');
+  box.innerHTML = '';
+  hand.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.className = 'card deal' + (c.red ? ' red' : '');
+    b.style.animationDelay = (i * 45) + 'ms';
+    b.setAttribute('aria-label', c.rank + ' ' + c.suit);
+    b.innerHTML = '<span class="tl"><b>' + c.rank + '</b><i>' + c.suit + '</i></span>' +
+                  '<span class="mid">' + c.suit + '</span>' +
+                  '<span class="br"><b>' + c.rank + '</b><i>' + c.suit + '</i></span>';
+    b.addEventListener('click', () => choose(i));
+    b.addEventListener('mouseenter', () => { hov.enter[i] = performance.now(); if (hov.first < 0) hov.first = i; });
+    b.addEventListener('mouseleave', () => { if (hov.enter[i] != null) { hov.dwell[i] += performance.now() - hov.enter[i]; hov.enter[i] = null; } });
+    box.appendChild(b);
+  });
+  roundStart = performance.now();
+  updateCounter();
+}
+
+function hitsArr() { return rounds.map(r => (r.choice === r.guess ? 1 : 0)); }
+
+function updateCounter() {
+  const n = rounds.length;
+  let t = userName + ' · rozegrano rund: ' + n + ' · zalecane ponad ' + RECOMMENDED;
+  if (mode === 'challenge' && n > 0) {
+    const h = hitsArr(), last = h.slice(-10);
+    t += ' · model trafia: ' + pct(h.reduce((a, b) => a + b, 0) / n) + ' (ost. 10: ' + pct(last.reduce((a, b) => a + b, 0) / last.length) + ')';
+  }
+  $('counter').textContent = t;
+  $('progress').style.width = Math.min(100, n / RECOMMENDED * 100) + '%';
+}
+
+function choose(i) {
+  if (Date.now() < lockUntil) return;
+  lockUntil = Date.now() + 250;
+  const now = performance.now();
+  hov.enter.forEach((t, j) => { if (t != null) { hov.dwell[j] += now - t; hov.enter[j] = null; } });
+  rounds.push({
+    hand, choice: i, guess, rt: now - roundStart,
+    dwell: hov.dwell.map(Math.round), first: hov.first
+  });
+  predictor.observe(i, hand);
+  if (mode === 'challenge') {
+    const hit = i === guess, h = hitsArr();
+    let streak = 0; for (let k = h.length - 1; k >= 0 && !h[k]; k--) streak++;
+    const hud = $('hud'); hud.innerHTML = '';
+    hud.appendChild(document.createTextNode('Model typował '));
+    hud.appendChild(el('b', null, hand[guess].label));
+    hud.appendChild(document.createTextNode(hit ? ' – trafił.' : ' – pudło. Seria niespodzianek: ' + streak + '.'));
+  }
+  nextRound();
+}
+
+/* ---------- podsumowanie ---------- */
+function sparkline(res) {
+  const W = 300, H = 56, win = 20;
+  if (res.length < win + 1) return '';
+  const pts = [];
+  for (let i = win - 1; i < res.length; i++) { let s = 0; for (let j = i - win + 1; j <= i; j++) s += res[j]; pts.push(s / win); }
+  const top = Math.max(0.4, ...pts);
+  const x = i => (i / (pts.length - 1)) * W;
+  const y = v => H - 4 - (v / top) * (H - 8);
+  const line = pts.map((v, i) => x(i).toFixed(1) + ',' + y(v).toFixed(1)).join(' ');
+  return '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Trafność w czasie">' +
+    '<line x1="0" x2="' + W + '" y1="' + y(0.2).toFixed(1) + '" y2="' + y(0.2).toFixed(1) + '"/>' +
+    '<polyline points="' + line + '"/></svg>';
+}
+
+function asciiName(s) {
+  return s.replace(/ł/g, 'l').replace(/Ł/g, 'L').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'gracz';
+}
+
+function profileRow(it) {
+  const lab = labelOf(it.key);
+  let prefix, text;
+  if (it.est > 0) { prefix = 'lubi'; text = lab.pos; }
+  else if (lab.neg) { prefix = 'lubi'; text = lab.neg; }
+  else { prefix = 'unika'; text = lab.pos; }
+  return { prefix, text };
+}
+
+function renderProfile(root, items, n) {
+  root.appendChild(el('h3', null, 'Twoje upodobania (wyraźne statystycznie)'));
+  if (n < 30) { root.appendChild(el('p', 'note', 'Za mało rund na rzetelny profil – zagraj co najmniej 30.')); return; }
+  const strong = items.filter(it => Math.abs(it.z) >= 3).sort((a, b) => Math.abs(b.z) - Math.abs(a.z)).slice(0, 10);
+  const maybe = items.filter(it => Math.abs(it.z) >= 2 && Math.abs(it.z) < 3).sort((a, b) => Math.abs(b.z) - Math.abs(a.z)).slice(0, 6);
+  const draw = (list, cls) => {
+    const grid = el('div', 'prof' + (cls ? ' ' + cls : ''));
+    list.forEach(it => {
+      const r = profileRow(it);
+      const lab = el('div', 'lab'); lab.appendChild(el('em', null, r.prefix + ':')); lab.appendChild(document.createTextNode(r.text));
+      const meter = el('div', 'meter'); const bar = el('i', it.est < 0 && !labelOf(it.key).neg ? 'neg' : ''); bar.style.width = Math.min(100, Math.abs(it.est) / 2 * 100) + '%'; meter.appendChild(bar);
+      const e = Math.abs(it.est);
+      const lo = it.est > 0 ? it.lo : -it.hi, hi = it.est > 0 ? it.hi : -it.lo;
+      const val = el('div', 'val', e.toFixed(2).replace('.', ',') + ' [' + lo.toFixed(1).replace('.', ',') + '; ' + hi.toFixed(1).replace('.', ',') + ']');
+      grid.appendChild(lab); grid.appendChild(meter); grid.appendChild(val);
+    });
+    root.appendChild(grid);
+  };
+  if (!strong.length) root.appendChild(el('p', 'note', 'Brak statystycznie wyraźnych upodobań – Twoje wybory wyglądają na losowe.'));
+  else draw(strong);
+  if (maybe.length) {
+    root.appendChild(el('p', 'note', 'Możliwe, ale za mało danych, żeby być pewnym:'));
+    draw(maybe, 'maybe');
+  }
+  root.appendChild(el('p', 'note', 'Liczba to siła cechy (waga w modelu), w nawiasie 95% przedział ufności. Wyraźne = |z| ≥ 3, więc fałszywy alarm zdarza się rzadko. „Interakcja" to efekt ponad sumę osobnych upodobań.'));
+}
+
+async function finish() {
+  if (finished) return;
+  finished = true;
+  const results = hitsArr();
+  const a = analyse(results, mode);
+  const now = new Date();
+  const root = $('sum');
+  root.innerHTML = '';
+  root.appendChild(el('h2', null, 'Wynik · ' + userName + (mode === 'challenge' ? ' · oszukiwanie modelu' : '')));
+
+  if (a.rounds === 0) {
+    root.appendChild(el('p', 'verdict', 'Nie rozegrano żadnej rundy.'));
+    const acts = el('div', 'actions'); const again = el('button', 'btn', 'Od nowa'); again.onclick = reset;
+    acts.appendChild(again); root.appendChild(acts); show('s-sum'); return;
+  }
+
+  // --- analizy ---
+  const rep = replay(rounds);
+  let eff = [], fit = null;
+  if (a.rounds >= 30) { try { fit = fitBatch(rep); eff = effects(fit); } catch (e) { eff = []; } }
+  const changes = scanChanges(rep);
+  const timing = analyseTiming(rounds, results);
+
+  const doc = {
+    id: 's_' + now.getTime() + '_' + Math.random().toString(36).slice(2, 7),
+    name: userName, nameKey, mode, smartDeal: smart,
+    savedAt: now.toISOString(),
+    rounds: a.rounds, hits: a.hits, accuracy: +a.accuracy.toFixed(4),
+    firstHalf: a.firstHalf == null ? null : +a.firstHalf.toFixed(4),
+    secondHalf: a.secondHalf == null ? null : +a.secondHalf.toFixed(4),
+    last20: a.last20 == null ? null : +a.last20.toFixed(4),
+    z: +a.z.toFixed(2), verdict: a.verdict,
+    profile: eff.filter(e => Math.abs(e.z) >= 2).sort((x, y) => Math.abs(y.z) - Math.abs(x.z)).slice(0, 15)
+      .map(e => ({ feature: e.key, estimate: +e.est.toFixed(2), lo: +e.lo.toFixed(2), hi: +e.hi.toFixed(2), z: +e.z.toFixed(1) })),
+    changes: changes.map(c => ({ feature: c.label, fromRound: c.at, T: +c.T.toFixed(1) })),
+    timing: timing ? { medianMs: Math.round(timing.median), fastAcc: timing.fastAcc, slowAcc: timing.slowAcc } : null,
+    model: { w: predictor.exportWeights() },
+    log: rounds.slice(0, 1500).map(r => r.hand.map(c => c.label).join(',') + '|' + r.choice + '|' + r.guess + '|' + Math.round(r.rt) + '|' + r.dwell.join(',') + '|' + r.first)
+  };
+
+  // --- wynik główny ---
+  root.appendChild(el('div', 'big', pct(a.accuracy)));
+  root.appendChild(el('div', 'sub', 'trafionych przewidywań (' + a.hits + ' z ' + a.rounds + ') · losowy strzał to 20%'));
+  root.appendChild(el('p', 'verdict', a.verdict));
+
+  const rows = el('div', 'rows');
+  const addRow = (k, v) => { const r = el('div', 'row'); r.appendChild(el('span', null, k)); r.appendChild(el('span', null, v)); rows.appendChild(r); };
+  addRow('Rozegrane rundy', String(a.rounds));
+  if (a.firstHalf != null) {
+    addRow('Pierwsza połowa → druga połowa', pct(a.firstHalf) + ' → ' + pct(a.secondHalf));
+    addRow('Ostatnie 20 rund', pct(a.last20));
+  }
+  addRow('Istotność (z)', fmt(a.z, 1));
+  if (prevSession) addRow('Poprzednia sesja', pct(prevSession.accuracy) + ' w ' + prevSession.rounds + ' rundach (' + String(prevSession.savedAt).slice(0, 10) + ')');
+  root.appendChild(rows);
+
+  if (a.rounds < RECOMMENDED) root.appendChild(el('p', 'note c warn', 'Zagrano ' + a.rounds + ' rund – zalecane ponad ' + RECOMMENDED + '. Wynik jest orientacyjny.'));
+
+  const sp = sparkline(results);
+  if (sp) { root.appendChild(el('h3', null, 'Trafność w czasie (okno 20 rund, przerywana linia = losowy strzał)')); const w = el('div'); w.innerHTML = sp; root.appendChild(w); }
+
+  // --- profil ---
+  renderProfile(root, eff, a.rounds);
+  if (fit && eff.some(e => /^(kolor|znak):/.test(e.key) && Math.abs(e.z) >= 2)) {
+    root.appendChild(el('p', 'note', 'Kolejność znaków (efekt łączny): ' + suitOrder(fit).join(' > ')));
+  }
+
+  // --- zmiana stylu ---
+  root.appendChild(el('h3', null, 'Zmiana stylu w trakcie sesji'));
+  if (a.rounds < 60) root.appendChild(el('p', 'note', 'Do wykrywania zmian potrzeba co najmniej 60 rund.'));
+  else if (!changes.length) root.appendChild(el('p', 'note', 'Nie wykryto wyraźnej zmiany stylu.'));
+  else changes.forEach(c => {
+    const d = el('div', 'change');
+    d.appendChild(el('div', null, 'Od rundy ' + c.at + ' zmieniło się Twoje podejście do: ' + c.label + '.'));
+    d.appendChild(el('small', null, 'Wcześniej wybierano to w ' + pct(c.chosenBefore) + ' rund (dostępne w ' + pct(c.availBefore) + ' kart), później w ' + pct(c.chosenAfter) + ' (dostępne w ' + pct(c.availAfter) + ').'));
+    root.appendChild(d);
+  });
+
+  // --- czas reakcji ---
+  root.appendChild(el('h3', null, 'Czas reakcji'));
+  if (!timing) root.appendChild(el('p', 'note', 'Za mało danych o czasie (min. 20 rund).'));
+  else {
+    const tr = el('div', 'rows');
+    const add = (k, v) => { const r = el('div', 'row'); r.appendChild(el('span', null, k)); r.appendChild(el('span', null, v)); tr.appendChild(r); };
+    add('Mediana czasu wyboru', sec(timing.median));
+    add('Szybkie wybory (do mediany) → trafność modelu', pct(timing.fastAcc) + ' (' + timing.nFast + ' rund)');
+    add('Wolne wybory (powyżej mediany) → trafność modelu', pct(timing.slowAcc) + ' (' + timing.nSlow + ' rund)');
+    if (timing.trendFirst != null) add('Pierwsze 20 rund → ostatnie 20', sec(timing.trendFirst) + ' → ' + sec(timing.trendLast));
+    if (timing.considered != null) {
+      add('Średnio rozważanych kart (kursor ≥ 0,12 s)', timing.considered.toFixed(1).replace('.', ','));
+      add('Klik w pierwszą najechaną kartę', pct(timing.impulsive));
+    }
+    root.appendChild(tr);
+    const diff = timing.fastAcc - timing.slowAcc;
+    let txt;
+    if (timing.nFast < 15 || timing.nSlow < 15) txt = '';
+    else if (diff >= 0.08) txt = 'Gdy klikasz szybko, jesteś łatwiejszy do przewidzenia – szybkie wybory są bardziej nawykowe.';
+    else if (diff <= -0.08) txt = 'Gdy się dłużej zastanawiasz, jesteś łatwiejszy do przewidzenia – to wolniejsze, świadome ważenie ma u Ciebie wzorzec.';
+    else txt = 'Czas zastanawiania się nie zmienia istotnie Twojej przewidywalności.';
+    if (txt) root.appendChild(el('p', 'note', txt));
+  }
+
+  const status = el('div', 'status', 'Zapisuję wynik…');
+  root.appendChild(status);
+  const acts = el('div', 'actions');
+  const dlBtn = el('button', 'btn small ghost', 'Pobierz plik');
+  const rankBtn = el('button', 'btn small ghost', 'Ranking');
+  const again = el('button', 'btn small', 'Od nowa'); again.onclick = reset;
+  rankBtn.onclick = openRanking;
+  acts.appendChild(dlBtn); acts.appendChild(rankBtn); acts.appendChild(again);
+  root.appendChild(acts);
+  show('s-sum');
+
+  // --- zapis: przeglądarka (zawsze) + baza (jeśli dostępna) ---
+  let local = false, inDb = false, dbErr = null;
+  try {
+    const arr = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+    arr.push(doc);
+    localStorage.setItem(LS_KEY, JSON.stringify(arr.slice(-25)));
+    local = true;
+  } catch (e) { /* storage może być niedostępny */ }
+
+  const db = await cap('db');
+  if (db) {
+    try { await db.doc('sessions/' + doc.id).set(doc); inDb = true; }
+    catch (e) { dbErr = e && e.code; }
+  }
+  if (inDb) { status.textContent = 'Wynik zapisano w bazie ✓'; status.className = 'status ok'; }
+  else if (dbErr === 'quota_exceeded') status.textContent = 'Baza jest pełna – wynik zapisano tylko w przeglądarce. Pobierz plik.';
+  else if (local) status.textContent = 'Wynik zapisano w tej przeglądarce. Pobierz plik, jeśli chcesz mieć kopię.';
+  else status.textContent = 'Nie udało się zapisać automatycznie – pobierz plik.';
+
+  const dl = await cap('downloads');
+  const fname = 'wynik_' + asciiName(userName) + '_' + doc.savedAt.slice(0, 10) + '.json';
+  const body = JSON.stringify(doc, null, 2);
+  dlBtn.onclick = async () => {
+    try {
+      if (dl) await dl.save({ filename: fname, data: body });
+      else {
+        const a2 = document.createElement('a');
+        a2.href = URL.createObjectURL(new Blob([body], { type: 'application/json' }));
+        a2.download = fname;
+        document.body.appendChild(a2); a2.click(); a2.remove();
+        setTimeout(() => URL.revokeObjectURL(a2.href), 1000);
+      }
+    } catch (e) { if (!e || e.code !== 'declined') status.textContent = 'Nie udało się zapisać pliku.'; }
+  };
+}
+
+/* ---------- ranking ---------- */
+async function openRanking() {
+  const root = $('rank');
+  root.innerHTML = '';
+  root.appendChild(el('h2', null, 'Ranking'));
+  const loading = el('p', 'note c', 'Wczytuję…'); root.appendChild(loading);
+  show('s-rank');
+  let items = [];
+  const db = await cap('db');
+  try {
+    if (db) {
+      const snap = await db.collection('sessions').orderBy('savedAt', 'desc').limit(300).get();
+      items = snap.docs.map(d => d.data() || {});
+    }
+  } catch (e) { items = []; }
+  if (!items.length) {
+    try { items = JSON.parse(localStorage.getItem(LS_KEY) || '[]').slice().reverse(); } catch (e) { items = []; }
+  }
+  loading.remove();
+
+  // najnowsza sesja każdej osoby w danym trybie, min. 30 rund
+  const seen = new Set(), pick = [];
+  for (const x of items) {
+    if (!x || (x.rounds || 0) < 30) continue;
+    const key = (x.nameKey || String(x.name || '').toLowerCase()) + '|' + (x.mode || 'normal');
+    if (seen.has(key)) continue;
+    seen.add(key); pick.push(x);
+  }
+  const table = (list) => {
+    const t = el('table');
+    const head = el('tr'); ['#', 'Imię', 'Rundy', 'Trafność'].forEach(h => head.appendChild(el('th', null, h))); t.appendChild(head);
+    list.slice(0, 15).forEach((x, i) => {
+      const tr = el('tr');
+      tr.appendChild(el('td', null, String(i + 1)));
+      tr.appendChild(el('td', null, String(x.name || '–')));
+      tr.appendChild(el('td', null, String(x.rounds)));
+      tr.appendChild(el('td', null, pct(x.accuracy)));
+      t.appendChild(tr);
+    });
+    return t;
+  };
+  const normal = pick.filter(x => (x.mode || 'normal') === 'normal').sort((a, b) => b.accuracy - a.accuracy || b.rounds - a.rounds);
+  const chall = pick.filter(x => x.mode === 'challenge').sort((a, b) => a.accuracy - b.accuracy || b.rounds - a.rounds);
+  root.appendChild(el('h3', null, 'Najbardziej przewidywalni (tryb zwykły)'));
+  if (normal.length) root.appendChild(table(normal)); else root.appendChild(el('p', 'note', 'Brak sesji (min. 30 rund).'));
+  root.appendChild(el('h3', null, 'Najlepiej oszukali model (tryb „Oszukaj model", najniższa trafność)'));
+  if (chall.length) root.appendChild(table(chall)); else root.appendChild(el('p', 'note', 'Brak sesji (min. 30 rund).'));
+  root.appendChild(el('p', 'note c', 'Uwzględniam najnowszą sesję każdej osoby w danym trybie. Losowy strzał = 20%.'));
+  const acts = el('div', 'actions'); acts.style.marginTop = '24px';
+  const back = el('button', 'btn small', 'Wróć'); back.onclick = () => show('s-start');
+  acts.appendChild(back); root.appendChild(acts);
+}
+
+function reset() {
+  $('name').value = userName || '';
+  show('s-start');
+  $('name').focus();
+}
+
+$('go').addEventListener('click', startGame);
+$('name').addEventListener('keydown', e => { if (e.key === 'Enter') startGame(); });
+$('stop').addEventListener('click', finish);
+$('m-normal').addEventListener('click', () => setMode('normal'));
+$('m-challenge').addEventListener('click', () => setMode('challenge'));
+$('to-rank').addEventListener('click', openRanking);
+show('s-start');
+</script>
+</body>
+</html>
