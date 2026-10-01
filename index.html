@@ -213,8 +213,7 @@ class Habits {
 
 const POS = 'pozycja w ręce: ';
 
-// Cechy karty (J=11, Q=12, K=13, A=14; as jest parzysty). Kodowanie znaków przez kontrasty ±0,5
-// (kolor, ♥ vs ♦, ♠ vs ♣), dzięki czemu każda cecha jest identyfikowalna statystycznie.
+// Cechy karty bez nadmiernej współliniowości i interakcji
 function cardFeatures(card, slot, hand, h) {
   const f = {};
   const red = card.red ? 1 : 0, even = card.value % 2 === 0 ? 1 : 0;
@@ -235,13 +234,7 @@ function cardFeatures(card, slot, hand, h) {
   f['ręka: rzadki znak'] = 1 - hand.filter(c => c.suit === card.suit).length / hand.length;
   f['ręka: rzadki kolor'] = 1 - hand.filter(c => c.red === card.red).length / hand.length;
 
-  // cechy złożone (efekt ponad sumę osobnych upodobań)
-  // (cechy wycentrowane, żeby były niezależne od efektów głównych)
-  f['kombinacja: parzysta + czerwona'] = (even - 0.54) * (red - 0.5);
-  f['kombinacja: parzysta + wysoka'] = (even - 0.54) * (high - 0.46);
-  f['kombinacja: czerwona + wysoka'] = (red - 0.5) * (high - 0.46);
-  f['kombinacja: parzysta + najwyższa w ręce'] = (even - 0.54) * (top - 0.2);
-  f['kombinacja: figura + czerwona'] = (face - 0.31) * (red - 0.5);
+  f['nawyk: skrajne pozycje'] = (slot === 0 || slot === 4) ? 1 : 0;
 
   const p = h.prev;
   if (p) {
@@ -253,7 +246,10 @@ function cardFeatures(card, slot, hand, h) {
     f['powtórka: wyższa niż poprzednia'] = higher;
     f['powtórka: podobna wartość'] = 1 - Math.abs(card.value - p.value) / 12;
     f['powtórka: ta sama pozycja w ręce'] = slot === h.prevSlot ? 1 : 0;
-    f['sekwencja: kolor × kierunek'] = (sameColor - 0.5) * (higher - 0.5);
+  }
+  if (h.prevSlot != null) {
+    f['nawyk: krok w prawo'] = (slot === (h.prevSlot + 1) % 5) ? 1 : 0;
+    f['nawyk: krok w lewo'] = (slot === (h.prevSlot + 4) % 5) ? 1 : 0;
   }
   const r = h.recent;
   if (r.length) {
@@ -266,7 +262,6 @@ function cardFeatures(card, slot, hand, h) {
   return f;
 }
 
-// Etykiety do raportu: pos = co lubi przy wartości dodatniej, neg = co lubi przy ujemnej (jeśli jest "druga strona")
 const LABELS = {
   'kolor: czerwony zamiast czarnego': { pos: 'karty czerwone (♥♦)', neg: 'karty czarne (♠♣)' },
   'znak: ♥ zamiast ♦': { pos: '♥ zamiast ♦', neg: '♦ zamiast ♥' },
@@ -278,11 +273,6 @@ const LABELS = {
   'ręka: najniższa karta': { pos: 'najniższa karta w ręce' },
   'ręka: rzadki znak': { pos: 'znak, którego jest mało w ręce' },
   'ręka: rzadki kolor': { pos: 'kolor, którego jest mało w ręce' },
-  'kombinacja: parzysta + czerwona': { pos: 'parzyste czerwone i nieparzyste czarne (interakcja)', neg: 'parzyste czarne i nieparzyste czerwone (interakcja)' },
-  'kombinacja: parzysta + wysoka': { pos: 'parzyste wysokie i nieparzyste niskie (interakcja)', neg: 'parzyste niskie i nieparzyste wysokie (interakcja)' },
-  'kombinacja: czerwona + wysoka': { pos: 'czerwone wysokie i czarne niskie (interakcja)', neg: 'czerwone niskie i czarne wysokie (interakcja)' },
-  'kombinacja: parzysta + najwyższa w ręce': { pos: 'parzysta jako najwyższa karta w ręce (interakcja)', neg: 'nieparzysta jako najwyższa karta w ręce (interakcja)' },
-  'kombinacja: figura + czerwona': { pos: 'czerwone figury i asy (interakcja)', neg: 'czarne figury i asy (interakcja)' },
   'powtórka: ten sam znak': { pos: 'ten sam znak co poprzednio' },
   'powtórka: ten sam kolor': { pos: 'ten sam kolor co poprzednio' },
   'powtórka: ta sama parzystość': { pos: 'ta sama parzystość co poprzednio' },
@@ -290,7 +280,9 @@ const LABELS = {
   'powtórka: wyższa niż poprzednia': { pos: 'wyższa karta niż poprzednio', neg: 'niższa karta niż poprzednio' },
   'powtórka: podobna wartość': { pos: 'wartość bliska poprzedniej' },
   'powtórka: ta sama pozycja w ręce': { pos: 'ta sama pozycja w ręce co poprzednio' },
-  'sekwencja: kolor × kierunek': { pos: 'ten sam kolor przy wyższej karcie, zmiana koloru przy niższej', neg: 'ten sam kolor przy niższej karcie, zmiana koloru przy wyższej' },
+  'nawyk: skrajne pozycje': { pos: 'wybieranie skrajnych kart (lewa/prawa krawędź)', neg: 'wybieranie środkowych kart' },
+  'nawyk: krok w prawo': { pos: 'przesuwanie wyboru o 1 w prawo względem poprzedniego' },
+  'nawyk: krok w lewo': { pos: 'przesuwanie wyboru o 1 w lewo względem poprzedniego' },
   'seria: dominujący znak': { pos: 'trzymanie się znaku z ostatnich rund', neg: 'zmienianie znaku względem ostatnich rund' },
   'seria: dominujący kolor': { pos: 'trzymanie się koloru z ostatnich rund', neg: 'zmienianie koloru względem ostatnich rund' },
   'seria: dominująca parzystość': { pos: 'trzymanie się parzystości z ostatnich rund', neg: 'zmienianie parzystości względem ostatnich rund' },
@@ -301,9 +293,9 @@ function labelOf(key) {
   return LABELS[key] || { pos: key };
 }
 
-// Wybór = softmax(w · cechy), uczony online (conditional logit)
+// Używa regularyzacji L1 (Lasso) promującej rzadkość cech
 class Learner {
-  constructor(lr, l2 = 0.003) { this.lr = lr; this.l2 = l2; this.w = {}; }
+  constructor(lr, l1 = 0.005) { this.lr = lr; this.l1 = l1; this.w = {}; }
   probs(feats) {
     const sc = feats.map(f => { let s = 0; for (const k in f) s += (this.w[k] || 0) * f[k]; return s; });
     const m = Math.max(...sc);
@@ -317,16 +309,19 @@ class Learner {
     feats.forEach((f, i) => { for (const k in f) grad[k] = (grad[k] || 0) - p[i] * f[k]; });
     for (const k in feats[chosen]) grad[k] = (grad[k] || 0) + feats[chosen][k];
     const keys = new Set([...Object.keys(this.w), ...Object.keys(grad)]);
-    for (const k of keys) this.w[k] = (this.w[k] || 0) + this.lr * (grad[k] || 0) - this.l2 * (this.w[k] || 0);
+    for (const k of keys) {
+      let w_new = (this.w[k] || 0) + this.lr * (grad[k] || 0);
+      this.w[k] = Math.sign(w_new) * Math.max(0, Math.abs(w_new) - this.l1);
+    }
   }
 }
 
 class Predictor {
   constructor() {
-    this.learners = { szybki: new Learner(0.30), wolny: new Learner(0.06) };
+    this.learners = { szybki: new Learner(0.15), wolny: new Learner(0.06) };
     this.perf = { szybki: 0, wolny: 0 };
     this.habits = new Habits();
-    this.info = {};                       // zebrana informacja o każdej cesze (do mądrych rozdań)
+    this.info = {};
   }
   feats(hand) { return hand.map((c, i) => cardFeatures(c, i, hand, this.habits)); }
   mix() {
@@ -341,7 +336,6 @@ class Predictor {
     return out;
   }
   predict(hand) { return this.predictFeats(this.feats(hand)); }
-  // informacja Fishera, jaką dałaby dana ręka, rozbita na cechy
   handInfo(feats) {
     const p = this.predictFeats(feats), s1 = {}, s2 = {};
     feats.forEach((f, i) => { for (const k in f) { s1[k] = (s1[k] || 0) + p[i] * f[k]; s2[k] = (s2[k] || 0) + p[i] * f[k] * f[k]; } });
@@ -360,7 +354,6 @@ class Predictor {
     }
     this.habits.update(hand[idx], idx);
   }
-  // mądre rozdanie: z kilku losowych rąk wybiera tę, która najmocniej zmniejszy niepewność co do cech
   smartHand(tries = 24) {
     let best = null, bestScore = -1;
     for (let t = 0; t < tries; t++) {
@@ -368,8 +361,8 @@ class Predictor {
       const hi = this.handInfo(this.feats(hand));
       let score = 0;
       for (const k in hi) {
-        const v = 1 / (1 + (this.info[k] || 0));          // wariancja a priori ~ 1/(1+zebrana informacja)
-        score += v - 1 / (1 / v + hi[k]);                   // spodziewane zmniejszenie wariancji
+        const v = 1 / (1 + (this.info[k] || 0));
+        score += v - 1 / (1 / v + hi[k]);
       }
       if (score > bestScore) { bestScore = score; best = hand; }
     }
@@ -390,7 +383,6 @@ class Predictor {
 }
 
 /* ---------- analiza po sesji ---------- */
-// cechy binarne do wykrywania zmiany stylu
 const SCAN = [
   { label: 'parzyste karty', f: c => c.value % 2 === 0 },
   { label: 'czerwone karty', f: c => c.red },
@@ -441,7 +433,6 @@ function invert(A) {
   return M.map(r => Array.from(r.slice(n)));
 }
 
-// Wsadowy conditional logit (Newton) z lekką regularyzacją; kowariancja = odwrotność Hesjanu
 function fitBatch(rep, lambda = 0.5) {
   const keys = [...new Set(rep.flatMap(r => r.feats.flatMap(f => Object.keys(f))))];
   const d = keys.length, idx = {};
@@ -479,7 +470,6 @@ function fitBatch(rep, lambda = 0.5) {
   return { keys, w: Array.from(w), cov: inv };
 }
 
-// Estymaty z błędami standardowymi. Pozycje w ręce raportujemy jako kontrasty względem średniej.
 function effects(fit) {
   const { keys, w, cov } = fit, d = keys.length;
   const posIdx = keys.map((k, i) => (k.startsWith(POS) ? i : -1)).filter(i => i >= 0);
@@ -500,7 +490,6 @@ function suitOrder(fit) {
   return Object.entries(tot).sort((a, b) => b[1] - a[1]).map(x => x[0]);
 }
 
-// Wykrywanie zmiany stylu: dla każdej cechy szukamy punktu, w którym zmienia się "nadwyżka wyborów"
 function scanChanges(rep, minSeg = 20, thr = 4.0) {
   const n = rep.length;
   if (n < minSeg * 3) return [];
@@ -543,26 +532,25 @@ function analyse(results, mode) {
   const z = n ? (hits - n * base) / Math.sqrt(n * base * (1 - base)) : 0;
   let verdict;
   if (mode === 'challenge') {
-    if (n < 20) verdict = 'Za mało rund, żeby coś ocenić.';
-    else if (z >= 3) verdict = 'Model Cię rozgryzł – mimo prób zostawiasz wyraźny wzorzec.';
-    else if (z >= 2) verdict = 'Model częściowo Cię rozgryzł – wzorzec jest wykrywalny.';
+    if (n < 50) verdict = 'Za mało rund, żeby coś ocenić.';
+    else if (z >= 3.8) verdict = 'Model Cię rozgryzł – mimo prób zostawiasz wyraźny wzorzec.';
+    else if (z >= 2.8) verdict = 'Model częściowo Cię rozgryzł – wzorzec jest wykrywalny.';
     else verdict = 'Model nie dał rady – Twoje wybory są nieprzewidywalne.';
   } else {
-    if (n < 20) verdict = 'Za mało rund, żeby coś ocenić.';
-    else if (z >= 3) verdict = 'Jesteś bardzo przewidywalny – model wyraźnie wyłapał Twój wzorzec.';
-    else if (z >= 2) verdict = 'Masz wykrywalny wzorzec wyboru – model trafia istotnie częściej niż przypadek.';
+    if (n < 50) verdict = 'Za mało rund, żeby coś ocenić.';
+    else if (z >= 3.8) verdict = 'Jesteś bardzo przewidywalny – model wyraźnie wyłapał Twój wzorzec.';
+    else if (z >= 2.8) verdict = 'Masz wykrywalny wzorzec wyboru – model trafia istotnie częściej niż przypadek.';
     else verdict = 'Brak wyraźnego wzorca – Twoje wybory są zbliżone do losowych.';
   }
   return {
     rounds: n, hits, accuracy: n ? hits / n : 0, z,
-    firstHalf: n >= 20 ? mean(results.slice(0, half)) : null,
-    secondHalf: n >= 20 ? mean(results.slice(half)) : null,
+    firstHalf: n >= 50 ? mean(results.slice(0, half)) : null,
+    secondHalf: n >= 50 ? mean(results.slice(half)) : null,
     last20: n >= 20 ? mean(results.slice(-20)) : null,
     verdict
   };
 }
 
-// czas reakcji i zachowanie kursora
 function analyseTiming(rounds, hits) {
   const ok = rounds.map((r, i) => ({ rt: r.rt, hit: hits[i] })).filter(x => x.rt > 150 && x.rt < 20000);
   if (ok.length < 20) return null;
@@ -590,7 +578,7 @@ function analyseTiming(rounds, hits) {
 
 /* ================= interfejs ================= */
 const $ = id => document.getElementById(id);
-const RECOMMENDED = 100;
+const RECOMMENDED = 200;
 const LS_KEY = 'karty_sesje_v3';
 const pct = v => (v == null ? '–' : Math.round(v * 100) + '%');
 const fmt = (v, d = 2) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(d).replace('.', ',');
@@ -760,9 +748,9 @@ function profileRow(it) {
 
 function renderProfile(root, items, n) {
   root.appendChild(el('h3', null, 'Twoje upodobania (wyraźne statystycznie)'));
-  if (n < 30) { root.appendChild(el('p', 'note', 'Za mało rund na rzetelny profil – zagraj co najmniej 30.')); return; }
-  const strong = items.filter(it => Math.abs(it.z) >= 3).sort((a, b) => Math.abs(b.z) - Math.abs(a.z)).slice(0, 10);
-  const maybe = items.filter(it => Math.abs(it.z) >= 2 && Math.abs(it.z) < 3).sort((a, b) => Math.abs(b.z) - Math.abs(a.z)).slice(0, 6);
+  if (n < 50) { root.appendChild(el('p', 'note', 'Za mało rund na rzetelny profil – zagraj co najmniej 50.')); return; }
+  const strong = items.filter(it => Math.abs(it.z) >= 3.8).sort((a, b) => Math.abs(b.z) - Math.abs(a.z)).slice(0, 10);
+  const maybe = items.filter(it => Math.abs(it.z) >= 2.8 && Math.abs(it.z) < 3.8).sort((a, b) => Math.abs(b.z) - Math.abs(a.z)).slice(0, 6);
   const draw = (list, cls) => {
     const grid = el('div', 'prof' + (cls ? ' ' + cls : ''));
     list.forEach(it => {
@@ -782,7 +770,7 @@ function renderProfile(root, items, n) {
     root.appendChild(el('p', 'note', 'Możliwe, ale za mało danych, żeby być pewnym:'));
     draw(maybe, 'maybe');
   }
-  root.appendChild(el('p', 'note', 'Liczba to siła cechy (waga w modelu), w nawiasie 95% przedział ufności. Wyraźne = |z| ≥ 3, więc fałszywy alarm zdarza się rzadko. „Interakcja" to efekt ponad sumę osobnych upodobań.'));
+  root.appendChild(el('p', 'note', 'Liczba to siła cechy (waga w modelu), w nawiasie 95% przedział ufności. Wyraźne = |z| ≥ 3,8, więc fałszywy alarm zdarza się rzadko.'));
 }
 
 async function finish() {
@@ -804,7 +792,7 @@ async function finish() {
   // --- analizy ---
   const rep = replay(rounds);
   let eff = [], fit = null;
-  if (a.rounds >= 30) { try { fit = fitBatch(rep); eff = effects(fit); } catch (e) { eff = []; } }
+  if (a.rounds >= 50) { try { fit = fitBatch(rep); eff = effects(fit); } catch (e) { eff = []; } }
   const changes = scanChanges(rep);
   const timing = analyseTiming(rounds, results);
 
@@ -817,7 +805,7 @@ async function finish() {
     secondHalf: a.secondHalf == null ? null : +a.secondHalf.toFixed(4),
     last20: a.last20 == null ? null : +a.last20.toFixed(4),
     z: +a.z.toFixed(2), verdict: a.verdict,
-    profile: eff.filter(e => Math.abs(e.z) >= 2).sort((x, y) => Math.abs(y.z) - Math.abs(x.z)).slice(0, 15)
+    profile: eff.filter(e => Math.abs(e.z) >= 2.8).sort((x, y) => Math.abs(y.z) - Math.abs(x.z)).slice(0, 15)
       .map(e => ({ feature: e.key, estimate: +e.est.toFixed(2), lo: +e.lo.toFixed(2), hi: +e.hi.toFixed(2), z: +e.z.toFixed(1) })),
     changes: changes.map(c => ({ feature: c.label, fromRound: c.at, T: +c.T.toFixed(1) })),
     timing: timing ? { medianMs: Math.round(timing.median), fastAcc: timing.fastAcc, slowAcc: timing.slowAcc } : null,
@@ -848,7 +836,7 @@ async function finish() {
 
   // --- profil ---
   renderProfile(root, eff, a.rounds);
-  if (fit && eff.some(e => /^(kolor|znak):/.test(e.key) && Math.abs(e.z) >= 2)) {
+  if (fit && eff.some(e => /^(kolor|znak):/.test(e.key) && Math.abs(e.z) >= 2.8)) {
     root.appendChild(el('p', 'note', 'Kolejność znaków (efekt łączny): ' + suitOrder(fit).join(' > ')));
   }
 
@@ -954,10 +942,10 @@ async function openRanking() {
   }
   loading.remove();
 
-  // najnowsza sesja każdej osoby w danym trybie, min. 30 rund
+  // najnowsza sesja każdej osoby w danym trybie, min. 50 rund
   const seen = new Set(), pick = [];
   for (const x of items) {
-    if (!x || (x.rounds || 0) < 30) continue;
+    if (!x || (x.rounds || 0) < 50) continue;
     const key = (x.nameKey || String(x.name || '').toLowerCase()) + '|' + (x.mode || 'normal');
     if (seen.has(key)) continue;
     seen.add(key); pick.push(x);
@@ -978,9 +966,9 @@ async function openRanking() {
   const normal = pick.filter(x => (x.mode || 'normal') === 'normal').sort((a, b) => b.accuracy - a.accuracy || b.rounds - a.rounds);
   const chall = pick.filter(x => x.mode === 'challenge').sort((a, b) => a.accuracy - b.accuracy || b.rounds - a.rounds);
   root.appendChild(el('h3', null, 'Najbardziej przewidywalni (tryb zwykły)'));
-  if (normal.length) root.appendChild(table(normal)); else root.appendChild(el('p', 'note', 'Brak sesji (min. 30 rund).'));
+  if (normal.length) root.appendChild(table(normal)); else root.appendChild(el('p', 'note', 'Brak sesji (min. 50 rund).'));
   root.appendChild(el('h3', null, 'Najlepiej oszukali model (tryb „Oszukaj model", najniższa trafność)'));
-  if (chall.length) root.appendChild(table(chall)); else root.appendChild(el('p', 'note', 'Brak sesji (min. 30 rund).'));
+  if (chall.length) root.appendChild(table(chall)); else root.appendChild(el('p', 'note', 'Brak sesji (min. 50 rund).'));
   root.appendChild(el('p', 'note c', 'Uwzględniam najnowszą sesję każdej osoby w danym trybie. Losowy strzał = 20%.'));
   const acts = el('div', 'actions'); acts.style.marginTop = '24px';
   const back = el('button', 'btn small', 'Wróć'); back.onclick = () => show('s-start');
